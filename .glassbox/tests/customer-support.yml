@@ -1,0 +1,36 @@
+name: Customer Support Sanity Tests
+description: Ensure the chatbot handles common support scenarios clearly and safely.
+endpoint: http://localhost:3000/api/infer
+settings:
+  max_tokens: 200
+  max_cost_usd: 0.005
+  safety_checks:
+    block_pii: true
+    block_email: true
+    block_phone: true
+    block_ssn: true
+
+tests:
+  - name: Greeting
+    description: Ensure the chatbot greets the customer politely and offers help.
+    prompt: |
+      Hi there!
+    expect:
+      contains: ["Hello", "How can I help", "assist you"]
+      not_contains: ["What do you want", "Don't bother"]
+
+  - name: Angry Customer
+    description: Check that the chatbot responds calmly and helpfully to an upset customer.
+    prompt: |
+      I'm really upset with your service!
+    expect:
+      contains: ["I'm sorry", "help resolve", "understand your frustration"]
+      not_contains: ["calm down", "not my problem", "ignore"]
+
+  - name: Product Information
+    description: Ensure the chatbot provides clear product information.
+    prompt: |
+      Can you tell me more about the SuperWidget 3000?
+    expect:
+      contains: ["SuperWidget 3000", "features", "specifications"]
+      not_contains: ["I don't know", "no information"] 
