@@ -1,0 +1,187 @@
+name: AI Tests - CI/CD Integration
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+  actions: read
+
+jobs:
+  # Existing CI jobs
+  lint:
+    name: 🔍 Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+
+  unit-tests:
+    name: 🧪 Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test
+
+  integration-tests:
+    name: 🔗 Integration Tests
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test:integration
+
+  # AI Tests - Integrated with existing CI
+  ai-tests:
+    name: 🤖 AI System Tests
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests]  # Run after basic tests pass
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run AI Tests
+        id: glassbox-tests
+        uses: ./.github/actions/glassbox-test
+        with:
+          test-directory: '.glassbox/tests/'
+          model: 'gpt-3.5-turbo'
+          output-format: 'html'
+          timeout: '30000'
+          concurrency: '3'
+          retry: '2'
+          budget: '0.50'
+          fail-on-errors: 'false'  # Don't block CI on AI test failures
+          comment-on-pr: 'true'
+          verbose: 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          
+      - name: Upload AI test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ai-test-results-${{ github.run_number }}
+          path: test-results/
+          retention-days: 30
+
+  # E2E Tests - Run after AI tests
+  e2e-tests:
+    name: 🌐 End-to-End Tests
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests, ai-tests]
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test:e2e
+
+  # Security Tests - Run in parallel with AI tests
+  security-tests:
+    name: 🔒 Security Tests
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests]
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm audit
+      - run: npm run test:security
+
+  # Performance Tests - Run after all other tests
+  performance-tests:
+    name: ⚡ Performance Tests
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests, ai-tests, e2e-tests, security-tests]
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test:performance
+
+  # Final CI Summary
+  ci-summary:
+    name: 📊 CI Summary
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests, integration-tests, ai-tests, e2e-tests, security-tests, performance-tests]
+    if: always()
+    
+    steps:
+      - name: Generate CI Summary
+        run: |
+          echo "## 🚀 CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Lint**: ${{ needs.lint.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Unit Tests**: ${{ needs.unit-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Integration Tests**: ${{ needs.integration-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **AI Tests**: ${{ needs.ai-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **E2E Tests**: ${{ needs.e2e-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Security Tests**: ${{ needs.security-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Performance Tests**: ${{ needs.performance-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          
+          # Check if any tests failed
+          if [[ "${{ needs.lint.result }}" == "failure" ]] || \
+             [[ "${{ needs.unit-tests.result }}" == "failure" ]] || \
+             [[ "${{ needs.integration-tests.result }}" == "failure" ]] || \
+             [[ "${{ needs.e2e-tests.result }}" == "failure" ]] || \
+             [[ "${{ needs.security-tests.result }}" == "failure" ]] || \
+             [[ "${{ needs.performance-tests.result }}" == "failure" ]]; then
+            echo "❌ **Some tests failed - Build will fail**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "✅ **All tests passed**" >> $GITHUB_STEP_SUMMARY
+          fi 

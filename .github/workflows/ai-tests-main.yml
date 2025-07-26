@@ -1,0 +1,76 @@
+name: AI Tests - Main Branch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.glassbox/**'
+      - 'src/**'
+      - '.github/workflows/**'
+      - 'package.json'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  ai-tests:
+    name: 🤖 AI System Tests (Main)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run AI Tests
+        id: glassbox-tests
+        uses: ./.github/actions/glassbox-test
+        with:
+          test-directory: '.glassbox/tests/'
+          model: 'gpt-4'  # Use more capable model for main branch
+          output-format: 'json'
+          timeout: '60000'  # Longer timeout for main branch
+          concurrency: '5'
+          retry: '3'
+          budget: '2.00'  # Higher budget for main branch
+          fail-on-errors: 'true'  # Fail build on test failures
+          comment-on-pr: 'false'  # No PR comments on main branch
+          verbose: 'false'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ai-test-results-main-${{ github.sha }}
+          path: test-results/
+          retention-days: 90
+          
+      - name: Create test summary
+        if: always()
+        run: |
+          echo "## 🤖 AI Test Summary for Main Branch" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total Tests**: ${{ steps.glassbox-tests.outputs.total }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Passed**: ${{ steps.glassbox-tests.outputs.passed }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Failed**: ${{ steps.glassbox-tests.outputs.failed }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Success Rate**: ${{ steps.glassbox-tests.outputs.success-rate }}%" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total Cost**: ${{ steps.glassbox-tests.outputs.total-cost }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Duration**: ${{ steps.glassbox-tests.outputs.total-duration }}ms" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.glassbox-tests.outputs.has-failures }}" = "true" ]; then
+            echo "❌ **Some tests failed - Build will fail**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **All tests passed**" >> $GITHUB_STEP_SUMMARY
+          fi 

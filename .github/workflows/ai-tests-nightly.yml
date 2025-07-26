@@ -1,0 +1,124 @@
+name: AI Tests - Nightly
+
+on:
+  schedule:
+    # Run every night at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  contents: read
+  actions: read
+  issues: write  # For creating issues on failures
+
+jobs:
+  nightly-ai-tests:
+    name: 🌙 Nightly AI Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run comprehensive AI tests
+        id: glassbox-tests
+        uses: ./.github/actions/glassbox-test
+        with:
+          test-directory: '.glassbox/tests/'
+          model: 'gpt-4'  # Use best model for nightly tests
+          output-format: 'html'
+          timeout: '90000'  # Longer timeout for comprehensive testing
+          concurrency: '3'  # Lower concurrency for stability
+          retry: '3'
+          budget: '5.00'  # Higher budget for nightly comprehensive tests
+          fail-on-errors: 'false'  # Don't fail nightly, just report
+          comment-on-pr: 'false'
+          verbose: 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          
+      - name: Upload nightly artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-ai-tests-${{ github.run_number }}
+          path: test-results/
+          retention-days: 365  # Keep nightly results longer
+          
+      - name: Create nightly summary
+        if: always()
+        run: |
+          echo "## 🌙 Nightly AI Test Report" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run Date**: $(date -u +'%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total Tests**: ${{ steps.glassbox-tests.outputs.total }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Passed**: ${{ steps.glassbox-tests.outputs.passed }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Failed**: ${{ steps.glassbox-tests.outputs.failed }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Success Rate**: ${{ steps.glassbox-tests.outputs.success-rate }}%" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total Cost**: ${{ steps.glassbox-tests.outputs.total-cost }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Duration**: ${{ steps.glassbox-tests.outputs.total-duration }}ms" >> $GITHUB_STEP_SUMMARY
+          
+      - name: Create issue on critical failures
+        if: steps.glassbox-tests.outputs.has-failures == 'true' && steps.glassbox-tests.outputs.success-rate < '80'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: ['ai-test-failure', 'nightly']
+            });
+            
+            // Check if issue already exists for today
+            const today = new Date().toISOString().split('T')[0];
+            const existingIssue = issues.find(issue => 
+              issue.title.includes(today) && issue.title.includes('Nightly AI Test Failure')
+            );
+            
+            if (!existingIssue) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `🚨 Nightly AI Test Failure - ${today}`,
+                body: `## Nightly AI Test Failure Report
+                
+                **Date**: ${new Date().toISOString()}
+                **Success Rate**: ${{ steps.glassbox-tests.outputs.success-rate }}%
+                **Failed Tests**: ${{ steps.glassbox-tests.outputs.failed }}/${{ steps.glassbox-tests.outputs.total }}
+                **Total Cost**: ${{ steps.glassbox-tests.outputs.total-cost }}
+                
+                ### Details
+                - This is an automated issue created by the nightly AI test workflow
+                - Success rate below 80% indicates potential issues with AI system
+                - Check the workflow artifacts for detailed test results
+                - Consider reviewing test cases and model configuration
+                
+                ### Artifacts
+                - [Test Results](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+                - [Workflow Run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+                
+                ### Next Steps
+                - [ ] Review failed test cases
+                - [ ] Check model performance and configuration
+                - [ ] Update test cases if needed
+                - [ ] Monitor for patterns in failures`,
+                labels: ['ai-test-failure', 'nightly', 'automated'],
+                assignees: ['${{ github.repository_owner }}']
+              });
+            }
+            
+      - name: Send cost alert
+        if: steps.glassbox-tests.outputs.total-cost > '3.00'
+        run: |
+          echo "⚠️ High cost alert: ${{ steps.glassbox-tests.outputs.total-cost }} spent on nightly tests"
+          echo "Consider reviewing test budget and optimization opportunities" 

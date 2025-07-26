@@ -1,0 +1,83 @@
+name: AI Tests - Pull Request
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - '.glassbox/**'
+      - 'src/**'
+      - '.github/workflows/**'
+      - 'package.json'
+
+permissions:
+  contents: read
+  pull-requests: write
+  actions: read
+
+jobs:
+  ai-tests:
+    name: 🤖 AI System Tests
+    runs-on: ubuntu-latest
+    
+    # Only run if PR has changes to test files or source code
+    if: |
+      github.event.pull_request.draft == false &&
+      (contains(github.event.pull_request.labels.*.name, 'ai-test') ||
+       contains(github.event.pull_request.title, 'ai') ||
+       contains(github.event.pull_request.title, 'test'))
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better context
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run AI Tests
+        id: glassbox-tests
+        uses: ./.github/actions/glassbox-test
+        with:
+          test-directory: '.glassbox/tests/'
+          model: 'gpt-3.5-turbo'
+          output-format: 'html'
+          timeout: '30000'
+          concurrency: '3'
+          retry: '2'
+          budget: '0.50'
+          fail-on-errors: 'false'  # Don't fail PR on test failures
+          comment-on-pr: 'true'
+          verbose: 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ai-test-results-${{ github.run_number }}
+          path: test-results/
+          retention-days: 30
+          
+      - name: Notify test results
+        if: steps.glassbox-tests.outputs.has-failures == 'true'
+        run: |
+          echo "⚠️ Some AI tests failed!"
+          echo "Failed: ${{ steps.glassbox-tests.outputs.failed }}/${{ steps.glassbox-tests.outputs.total }}"
+          echo "Success Rate: ${{ steps.glassbox-tests.outputs.success-rate }}%"
+          echo "Cost: ${{ steps.glassbox-tests.outputs.total-cost }}"
+          
+      - name: Success notification
+        if: steps.glassbox-tests.outputs.success == 'true'
+        run: |
+          echo "✅ All AI tests passed!"
+          echo "Passed: ${{ steps.glassbox-tests.outputs.passed }}/${{ steps.glassbox-tests.outputs.total }}"
+          echo "Cost: ${{ steps.glassbox-tests.outputs.total-cost }}" 

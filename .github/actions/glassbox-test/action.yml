@@ -1,0 +1,254 @@
+name: 'Glassbox AI Test Runner'
+description: 'Run AI system tests using Glassbox CLI with comprehensive reporting'
+
+inputs:
+  test-directory:
+    description: 'Directory containing test YAML files'
+    required: false
+    default: '.glassbox/tests/'
+  
+  model:
+    description: 'AI model to use for testing (e.g., gpt-3.5-turbo, mistral:7b)'
+    required: false
+    default: 'gpt-3.5-turbo'
+  
+  output-format:
+    description: 'Output format for test results (json, xml, html, csv)'
+    required: false
+    default: 'json'
+  
+  timeout:
+    description: 'Test timeout in milliseconds'
+    required: false
+    default: '30000'
+  
+  concurrency:
+    description: 'Maximum concurrent tests'
+    required: false
+    default: '5'
+  
+  retry:
+    description: 'Number of retries for failed tests'
+    required: false
+    default: '2'
+  
+  budget:
+    description: 'Budget limit in USD'
+    required: false
+    default: '1.00'
+  
+  fail-on-errors:
+    description: 'Fail the build on any test failures'
+    required: false
+    default: 'true'
+  
+  comment-on-pr:
+    description: 'Add test results as PR comment'
+    required: false
+    default: 'true'
+  
+  verbose:
+    description: 'Enable verbose output'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      shell: bash
+      
+    - name: Install Glassbox CLI globally
+      run: npm install -g .
+      shell: bash
+      
+    - name: Create test results directory
+      run: mkdir -p test-results
+      shell: bash
+      
+    - name: Run Glassbox tests
+      id: run-tests
+      run: |
+        # Set environment variables for API keys
+        if [ -n "${{ secrets.OPENAI_API_KEY }}" ]; then
+          export OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
+        fi
+        
+        if [ -n "${{ secrets.ANTHROPIC_API_KEY }}" ]; then
+          export ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}"
+        fi
+        
+        # Run tests with specified configuration
+        glassbox test \
+          --test-dir "${{ inputs.test-directory }}" \
+          --model "${{ inputs.model }}" \
+          --timeout "${{ inputs.timeout }}" \
+          --concurrency "${{ inputs.concurrency }}" \
+          --retry "${{ inputs.retry }}" \
+          --budget "${{ inputs.budget }}" \
+          --export "${{ inputs.output-format }}" \
+          --output "test-results/results.${{ inputs.output-format }}" \
+          ${{ inputs.verbose == 'true' && '--verbose' || '' }} \
+          --json > test-results/output.json 2>&1
+        
+        # Capture exit code
+        echo "exit_code=$?" >> $GITHUB_OUTPUT
+      shell: bash
+      
+    - name: Parse test results
+      id: parse-results
+      run: |
+        if [ -f test-results/output.json ]; then
+          # Extract summary from JSON output
+          TOTAL=$(jq -r '.aggregated.summary.total // 0' test-results/output.json)
+          PASSED=$(jq -r '.aggregated.summary.passed // 0' test-results/output.json)
+          FAILED=$(jq -r '.aggregated.summary.failed // 0' test-results/output.json)
+          SUCCESS_RATE=$(jq -r '.aggregated.summary.successRate // 0' test-results/output.json)
+          TOTAL_COST=$(jq -r '.aggregated.summary.totalCost // 0' test-results/output.json)
+          TOTAL_DURATION=$(jq -r '.aggregated.summary.totalDuration // 0' test-results/output.json)
+          
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "passed=$PASSED" >> $GITHUB_OUTPUT
+          echo "failed=$FAILED" >> $GITHUB_OUTPUT
+          echo "success_rate=$SUCCESS_RATE" >> $GITHUB_OUTPUT
+          echo "total_cost=$TOTAL_COST" >> $GITHUB_OUTPUT
+          echo "total_duration=$TOTAL_DURATION" >> $GITHUB_OUTPUT
+        else
+          echo "total=0" >> $GITHUB_OUTPUT
+          echo "passed=0" >> $GITHUB_OUTPUT
+          echo "failed=0" >> $GITHUB_OUTPUT
+          echo "success_rate=0" >> $GITHUB_OUTPUT
+          echo "total_cost=0" >> $GITHUB_OUTPUT
+          echo "total_duration=0" >> $GITHUB_OUTPUT
+        fi
+      shell: bash
+      
+    - name: Generate test report
+      id: generate-report
+      run: |
+        # Create markdown report
+        cat > test-results/report.md << EOF
+        # 🤖 Glassbox AI Test Results
+        
+        ## 📊 Summary
+        - **Total Tests**: ${{ steps.parse-results.outputs.total }}
+        - **Passed**: ${{ steps.parse-results.outputs.passed }}
+        - **Failed**: ${{ steps.parse-results.outputs.failed }}
+        - **Success Rate**: ${{ steps.parse-results.outputs.success_rate }}%
+        - **Total Cost**: \$${{ steps.parse-results.outputs.total_cost }}
+        - **Total Duration**: ${{ steps.parse-results.outputs.total_duration }}ms
+        
+        ## ⚙️ Configuration
+        - **Model**: ${{ inputs.model }}
+        - **Test Directory**: ${{ inputs.test-directory }}
+        - **Timeout**: ${{ inputs.timeout }}ms
+        - **Concurrency**: ${{ inputs.concurrency }}
+        - **Retries**: ${{ inputs.retry }}
+        - **Budget**: \$${{ inputs.budget }}
+        
+        ## 📈 Results
+        ${{ steps.run-tests.outputs.exit_code == '0' && '✅ All tests passed!' || '❌ Some tests failed.' }}
+        
+        ## 📁 Artifacts
+        - [Test Results (${{ inputs.output-format }})](test-results/results.${{ inputs.output-format }})
+        - [Raw Output](test-results/output.json)
+        
+        ---
+        *Generated by Glassbox AI Test Runner*
+        EOF
+        
+        # Set report content for PR comment
+        echo "report_content<<EOF" >> $GITHUB_OUTPUT
+        cat test-results/report.md >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+      shell: bash
+      
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: glassbox-test-results
+        path: test-results/
+        retention-days: 30
+        
+    - name: Comment on PR
+      if: github.event_name == 'pull_request' && inputs.comment-on-pr == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const reportPath = 'test-results/report.md';
+          
+          if (fs.existsSync(reportPath)) {
+            const report = fs.readFileSync(reportPath, 'utf8');
+            
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+            
+            const existingComment = comments.find(comment => 
+              comment.body.includes('🤖 Glassbox AI Test Results')
+            );
+            
+            const commentBody = report + '\n\n---\n*This comment was automatically generated by the Glassbox AI Test Runner*';
+            
+            if (existingComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: commentBody
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody
+              });
+            }
+          }
+          
+    - name: Check test results
+      run: |
+        if [ "${{ inputs.fail-on-errors }}" = "true" ] && [ "${{ steps.parse-results.outputs.failed }}" -gt 0 ]; then
+          echo "❌ Tests failed! Build will fail."
+          exit 1
+        elif [ "${{ steps.run-tests.outputs.exit_code }}" != "0" ]; then
+          echo "❌ Test execution failed! Build will fail."
+          exit 1
+        else
+          echo "✅ All tests passed or failures are allowed."
+        fi
+      shell: bash
+      
+    - name: Display summary
+      run: |
+        echo "## 🤖 Glassbox Test Summary"
+        echo "- Total Tests: ${{ steps.parse-results.outputs.total }}"
+        echo "- Passed: ${{ steps.parse-results.outputs.passed }}"
+        echo "- Failed: ${{ steps.parse-results.outputs.failed }}"
+        echo "- Success Rate: ${{ steps.parse-results.outputs.success_rate }}%"
+        echo "- Total Cost: \$${{ steps.parse-results.outputs.total_cost }}"
+        echo "- Model Used: ${{ inputs.model }}"
+        
+        if [ "${{ steps.parse-results.outputs.failed }}" -gt 0 ]; then
+          echo "⚠️  Some tests failed. Check the artifacts for details."
+        else
+          echo "✅ All tests passed!"
+        fi
+      shell: bash

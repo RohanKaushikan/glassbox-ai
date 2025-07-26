@@ -1,0 +1,22 @@
+{
+  "name": "glassbox-test-action",
+  "version": "1.0.0",
+  "description": "GitHub Action wrapper for Glassbox AI Test Runner",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "dependencies": {
+    "@actions/core": "^1.10.0",
+    "@actions/github": "^6.0.0"
+  },
+  "keywords": [
+    "github-action",
+    "ai-testing",
+    "glassbox",
+    "ci-cd"
+  ],
+  "author": "Glassbox Team",
+  "license": "MIT"
+} 
