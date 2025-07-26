@@ -13,24 +13,24 @@ settings:
 tests:
   - name: Greeting
     description: Ensure the chatbot greets the customer politely and offers help.
-    prompt: |
-      Hi there!
-    expect:
-      contains: ["Hello", "How can I help", "assist you"]
-      not_contains: ["What do you want", "Don't bother"]
+    prompt: "Hi there!"
+    expect_contains: ["Hello", "How can I help", "assist you"]
+    expect_not_contains: ["What do you want", "Don't bother"]
+    max_tokens: 50
+    max_cost_usd: 0.001
 
   - name: Angry Customer
     description: Check that the chatbot responds calmly and helpfully to an upset customer.
-    prompt: |
-      I'm really upset with your service!
-    expect:
-      contains: ["I'm sorry", "help resolve", "understand your frustration"]
-      not_contains: ["calm down", "not my problem", "ignore"]
+    prompt: "I'm really upset with your service!"
+    expect_contains: ["I'm sorry", "help resolve", "understand your frustration"]
+    expect_not_contains: ["calm down", "not my problem", "ignore"]
+    max_tokens: 100
+    max_cost_usd: 0.002
 
   - name: Product Information
     description: Ensure the chatbot provides clear product information.
-    prompt: |
-      Can you tell me more about the SuperWidget 3000?
-    expect:
-      contains: ["SuperWidget 3000", "features", "specifications"]
-      not_contains: ["I don't know", "no information"] 
+    prompt: "Can you tell me more about the SuperWidget 3000?"
+    expect_contains: ["SuperWidget 3000", "features", "specifications"]
+    expect_not_contains: ["I don't know", "no information"]
+    max_tokens: 150
+    max_cost_usd: 0.003

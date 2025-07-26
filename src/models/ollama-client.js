@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434/api/generate';
 const OLLAMA_MODEL = 'mistral:7b';
-const TIMEOUT_MS = 10000;
+const TIMEOUT_MS = 30000;
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
 

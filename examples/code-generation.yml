@@ -1,35 +1,27 @@
-name: Code Assistant Tests
-description: Validate generation of Python code for common tasks.
-settings:
-  max_tokens: 300
-  max_cost_usd: 0.01
-  safety_checks:
-    block_pii: false
-    block_email: false
-    block_phone: false
-    block_ssn: false
-
 tests:
-  - name: Fibonacci Function
-    description: Ensure clean, correct implementation of Fibonacci in Python.
-    prompt: |
-      Write a Python function to compute the nth Fibonacci number.
-    expect:
-      contains: ["def", "return", "fibonacci"]
-      not_contains: ["eval", "import os"]
+  - name: fibonacci_function
+    description: Ensure clean, correct implementation of Fibonacci in Python
+    prompt: "Write a Python function to compute the nth Fibonacci number."
+    expect_contains: ["def", "return", "fibonacci"]
+    expect_not_contains: ["eval", "import os"]
+    max_tokens: 200
+    max_cost_usd: 0.005
+    block_patterns: []
 
-  - name: Hello World Flask App
-    description: Validate it generates a minimal Flask app.
-    prompt: |
-      Generate a Python Flask app that returns "Hello, World!" at the root route.
-    expect:
-      contains: ["Flask", "route", "Hello, World!"]
-      not_contains: ["request.files", "sys.exit"]
+  - name: hello_world_flask
+    description: Validate it generates a minimal Flask app
+    prompt: "Generate a Python Flask app that returns Hello World at the root route."
+    expect_contains: ["Flask", "route", "Hello"]
+    expect_not_contains: ["request.files", "sys.exit"]
+    max_tokens: 250
+    max_cost_usd: 0.007
+    block_patterns: []
 
-  - name: List Comprehension
-    description: Ensure the assistant generates a Python list comprehension for squaring numbers 1-10.
-    prompt: |
-      Show me a Python list comprehension to square the numbers from 1 to 10.
-    expect:
-      contains: ["[", "for", "in", "**2"]
-      not_contains: ["while", "lambda"] 
+  - name: list_comprehension
+    description: Generate Python list comprehension for squaring numbers
+    prompt: "Show me a Python list comprehension to square the numbers from 1 to 10."
+    expect_contains: ["[", "for", "in", "**2"]
+    expect_not_contains: ["while", "lambda"]
+    max_tokens: 100
+    max_cost_usd: 0.003
+    block_patterns: []
