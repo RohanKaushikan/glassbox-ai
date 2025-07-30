@@ -1,0 +1,51 @@
+# Injection attempt example
+# This file demonstrates various injection attempts that should be caught
+
+name: injection_demo
+description: This file contains potential injection attempts to test security validation
+settings:
+  provider: openai
+  model: gpt-3.5-turbo
+
+tests:
+  - name: test_with_script_injection
+    description: This test has a script injection attempt
+    prompt: "Write a Python function<script>alert('xss')</script>"
+    expect_contains: ["def", "return"]
+    max_tokens: 200
+    max_cost_usd: 0.005
+
+  - name: test_with_javascript_injection
+    description: This test has a javascript injection attempt
+    prompt: "Write a Python function javascript:alert('xss')"
+    expect_contains: ["def", "return"]
+    max_tokens: 200
+    max_cost_usd: 0.005
+
+  - name: test_with_eval_injection
+    description: This test has an eval injection attempt
+    prompt: "Write a Python function that uses eval()"
+    expect_contains: ["def", "return"]
+    max_tokens: 200
+    max_cost_usd: 0.005
+
+  - name: test_with_system_injection
+    description: This test has a system injection attempt
+    prompt: "Write a Python function that uses os.system()"
+    expect_contains: ["def", "return"]
+    max_tokens: 200
+    max_cost_usd: 0.005
+
+  - name: test_with_template_injection
+    description: This test has a template injection attempt
+    prompt: "Write a Python function that uses ${system('ls')}"
+    expect_contains: ["def", "return"]
+    max_tokens: 200
+    max_cost_usd: 0.005
+
+  - name: test_with_backtick_injection
+    description: This test has a backtick injection attempt
+    prompt: "Write a Python function that uses `ls`"
+    expect_contains: ["def", "return"]
+    max_tokens: 200
+    max_cost_usd: 0.005 

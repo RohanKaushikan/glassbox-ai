@@ -7,8 +7,35 @@
   },
   "scripts": {
     "start": "node ./src/index.js",
-    "test": "jest"
+    "test": "jest",
+    "test-cache": "node test-cache.js",
+    "test-performance": "node test-performance.js",
+    "test-reliability": "node test-reliability.js",
+    "benchmark": "node src/benchmarks/index.js",
+    "benchmark:all": "node src/benchmarks/index.js all",
+    "benchmark:test": "node src/benchmarks/index.js category testExecution",
+    "benchmark:memory": "node src/benchmarks/index.js category memory",
+    "benchmark:network": "node src/benchmarks/index.js category network",
+    "benchmark:vscode": "node src/benchmarks/index.js category vscode",
+    "benchmark:startup": "node src/benchmarks/index.js category startup",
+    "benchmark:cache": "node src/benchmarks/index.js category cache",
+    "install": "node scripts/install.js",
+    "postinstall": "node -e \"console.log('Glassbox CLI installed successfully!')\"",
+    "preuninstall": "node -e \"console.log('Removing Glassbox CLI...')\""
   },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
   "author": "Your Name",
   "license": "MIT",
   "type": "module",

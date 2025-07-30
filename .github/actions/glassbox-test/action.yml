@@ -66,26 +66,36 @@ runs:
         
     - name: Install dependencies
       run: npm ci
-      shell: bash
       
     - name: Install Glassbox CLI globally
       run: npm install -g .
-      shell: bash
       
     - name: Create test results directory
-      run: mkdir -p test-results
-      shell: bash
+      run: |
+        if [ "$RUNNER_OS" = "Windows" ]; then
+          mkdir -p test-results
+        else
+          mkdir -p test-results
+        fi
       
     - name: Run Glassbox tests
       id: run-tests
       run: |
-        # Set environment variables for API keys
+        # Set environment variables for API keys (cross-platform)
         if [ -n "${{ secrets.OPENAI_API_KEY }}" ]; then
-          export OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            $env:OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
+          else
+            export OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
+          fi
         fi
         
         if [ -n "${{ secrets.ANTHROPIC_API_KEY }}" ]; then
-          export ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            $env:ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}"
+          else
+            export ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}"
+          fi
         fi
         
         # Run tests with specified configuration
@@ -102,8 +112,11 @@ runs:
           --json > test-results/output.json 2>&1
         
         # Capture exit code
-        echo "exit_code=$?" >> $GITHUB_OUTPUT
-      shell: bash
+        if [ "$RUNNER_OS" = "Windows" ]; then
+          echo "exit_code=$LASTEXITCODE" >> $env:GITHUB_OUTPUT
+        else
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+        fi
       
     - name: Parse test results
       id: parse-results

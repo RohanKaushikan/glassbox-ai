@@ -1,0 +1,62 @@
+# Comprehensive validation demo file
+# This file demonstrates various validation scenarios
+
+name: validation_demo_suite
+description: A comprehensive test suite that demonstrates the robust validation features of Glassbox, including proper field formatting, reasonable values, and secure configurations for AI testing scenarios.
+
+settings:
+  provider: openai
+  model: gpt-3.5-turbo
+  max_tokens: 1000
+  temperature: 0.7
+  safety_checks:
+    block_pii: true
+    block_email: true
+    block_phone: true
+    block_ssn: true
+
+tests:
+  - name: fibonacci_function
+    description: Ensure clean, correct implementation of Fibonacci in Python with proper error handling and documentation
+    prompt: "Write a Python function to compute the nth Fibonacci number with proper input validation and error handling."
+    expect_contains: ["def", "return", "fibonacci", "if", "else"]
+    expect_not_contains: ["eval", "import os", "system", "exec"]
+    max_tokens: 200
+    max_cost_usd: 0.005
+    block_patterns: []
+
+  - name: hello_world_flask
+    description: Validate it generates a minimal Flask app with proper routing and error handling
+    prompt: "Generate a Python Flask app that returns Hello World at the root route with proper error handling and logging."
+    expect_contains: ["Flask", "route", "Hello", "app", "run"]
+    expect_not_contains: ["request.files", "sys.exit", "os.system"]
+    max_tokens: 250
+    max_cost_usd: 0.007
+    block_patterns: []
+
+  - name: list_comprehension
+    description: Generate Python list comprehension for squaring numbers with proper formatting
+    prompt: "Show me a Python list comprehension to square the numbers from 1 to 10 with proper variable naming."
+    expect_contains: ["[", "for", "in", "**2", "range"]
+    expect_not_contains: ["while", "lambda", "eval"]
+    max_tokens: 100
+    max_cost_usd: 0.003
+    block_patterns: []
+
+  - name: data_validation
+    description: Test data validation and sanitization capabilities
+    prompt: "Create a Python function that validates and sanitizes user input for a web form, ensuring no SQL injection or XSS attacks are possible."
+    expect_contains: ["def", "validate", "sanitize", "input", "return"]
+    expect_not_contains: ["eval", "exec", "system", "subprocess"]
+    max_tokens: 300
+    max_cost_usd: 0.008
+    block_patterns: []
+
+  - name: secure_api_call
+    description: Demonstrate secure API call implementation
+    prompt: "Write a Python function that makes a secure HTTP API call with proper error handling, timeout, and input validation."
+    expect_contains: ["requests", "timeout", "try", "except", "validate"]
+    expect_not_contains: ["urllib2", "eval", "exec", "system"]
+    max_tokens: 200
+    max_cost_usd: 0.006
+    block_patterns: [] 

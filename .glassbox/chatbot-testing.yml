@@ -1,0 +1,83 @@
+name: "Customer Service Chatbot Tests"
+description: "Comprehensive testing of customer service chatbot responses"
+
+settings:
+  max_cost_usd: 0.10
+  max_tokens: 1000
+  timeout_ms: 30000
+
+tests:
+  - name: "Greeting Response"
+    description: "Test chatbot greeting and introduction"
+    prompt: "Hello, I need help with my order"
+    expect:
+      contains: ["hello", "greeting", "assist", "help"]
+      not_contains: ["sorry", "unavailable", "busy"]
+      max_tokens: 150
+
+  - name: "Order Status Inquiry"
+    description: "Test order status lookup functionality"
+    prompt: "What's the status of my order #12345?"
+    expect:
+      contains: ["order", "status", "tracking"]
+      not_contains: ["cannot", "unable", "error"]
+      block_patterns: ["credit_card", "ssn"]
+
+  - name: "Technical Support"
+    description: "Test technical support capabilities"
+    prompt: "My app keeps crashing when I try to upload photos"
+    expect:
+      contains: ["troubleshoot", "solution", "steps", "help"]
+      not_contains: ["don't know", "cannot help"]
+
+  - name: "Return Request"
+    description: "Test return and refund process"
+    prompt: "I want to return the item I bought last week"
+    expect:
+      contains: ["return", "refund", "process", "policy"]
+      not_contains: ["cannot", "unable"]
+      block_patterns: ["credit_card"]
+
+  - name: "Product Recommendation"
+    description: "Test product recommendation capabilities"
+    prompt: "I'm looking for wireless headphones under $100"
+    expect:
+      contains: ["headphones", "wireless", "recommend", "price"]
+      not_contains: ["don't know", "cannot help"]
+
+  - name: "Account Issues"
+    description: "Test account-related support"
+    prompt: "I can't log into my account"
+    expect:
+      contains: ["login", "account", "password", "reset"]
+      not_contains: ["cannot", "unable"]
+      block_patterns: ["password", "email"]
+
+  - name: "Payment Problems"
+    description: "Test payment-related support"
+    prompt: "My payment was declined, what should I do?"
+    expect:
+      contains: ["payment", "declined", "card", "try"]
+      not_contains: ["account", "balance", "specific"]
+      block_patterns: ["credit_card", "card_number"]
+
+  - name: "Shipping Information"
+    description: "Test shipping and delivery support"
+    prompt: "When will my package arrive?"
+    expect:
+      contains: ["shipping", "delivery", "tracking", "arrive"]
+      not_contains: ["cannot", "unable"]
+
+  - name: "Pricing Questions"
+    description: "Test pricing and cost inquiries"
+    prompt: "How much does shipping cost?"
+    expect:
+      contains: ["shipping", "cost", "price", "fee"]
+      not_contains: ["don't know", "cannot"]
+
+  - name: "General Help"
+    description: "Test general help and guidance"
+    prompt: "I need help with my purchase"
+    expect:
+      contains: ["help", "assist", "support", "guide"]
+      not_contains: ["sorry", "unavailable"] 

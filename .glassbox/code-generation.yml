@@ -1,0 +1,113 @@
+name: "Code Generation Tests"
+description: "Testing AI code generation for various programming languages"
+
+settings:
+  max_cost_usd: 0.15
+  max_tokens: 1000
+  timeout_ms: 45000
+
+tests:
+  - name: "Python Function Generation"
+    description: "Test Python function generation"
+    prompt: "Write a Python function to calculate the factorial of a number"
+    expect:
+      contains: ["def", "factorial", "return", "if", "else"]
+      not_contains: ["error", "cannot", "don't know"]
+      max_tokens: 200
+      block_patterns: ["password", "api_key"]
+
+  - name: "JavaScript Array Methods"
+    description: "Test JavaScript array manipulation"
+    prompt: "Write a JavaScript function to filter and map an array of numbers"
+    expect:
+      contains: ["function", "filter", "map", "=>", "return"]
+      not_contains: ["error", "cannot"]
+      max_tokens: 150
+
+  - name: "SQL Query Generation"
+    description: "Test SQL query generation"
+    prompt: "Write a SQL query to find all users who registered in the last 30 days"
+    expect:
+      contains: ["SELECT", "FROM", "WHERE", "DATE", "users"]
+      not_contains: ["error", "cannot"]
+      max_tokens: 100
+
+  - name: "React Component Generation"
+    description: "Test React component generation"
+    prompt: "Create a React component for a user profile card"
+    expect:
+      contains: ["function", "Component", "return", "JSX", "props"]
+      not_contains: ["error", "cannot"]
+      max_tokens: 300
+
+  - name: "API Endpoint Generation"
+    description: "Test API endpoint generation"
+    prompt: "Write a Node.js Express endpoint to handle user registration"
+    expect:
+      contains: ["app.post", "express", "req", "res", "validation"]
+      not_contains: ["error", "cannot"]
+      max_tokens: 250
+
+  - name: "Data Structure Implementation"
+    description: "Test data structure implementation"
+    prompt: "Implement a binary search tree in Python"
+    expect:
+      contains: ["class", "Node", "insert", "search", "traverse"]
+      not_contains: ["error", "cannot"]
+      max_tokens: 400
+
+  - name: "Algorithm Implementation"
+    description: "Test algorithm implementation"
+    prompt: "Implement quicksort algorithm in JavaScript"
+    expect:
+      contains: ["function", "quicksort", "pivot", "partition", "recursive"]
+      not_contains: ["error", "cannot"]
+      max_tokens: 300
+
+  - name: "Database Schema Generation"
+    description: "Test database schema generation"
+    prompt: "Create a SQL schema for an e-commerce database"
+    expect:
+      contains: ["CREATE TABLE", "PRIMARY KEY", "FOREIGN KEY", "users", "products"]
+      not_contains: ["error", "cannot"]
+      max_tokens: 400
+
+  - name: "Unit Test Generation"
+    description: "Test unit test generation"
+    prompt: "Write unit tests for a Python function that validates email addresses"
+    expect:
+      contains: ["import", "unittest", "test", "assert", "valid", "invalid"]
+      not_contains: ["error", "cannot"]
+      max_tokens: 300
+
+  - name: "Configuration File Generation"
+    description: "Test configuration file generation"
+    prompt: "Create a Dockerfile for a Node.js application"
+    expect:
+      contains: ["FROM", "COPY", "RUN", "EXPOSE", "CMD"]
+      not_contains: ["error", "cannot"]
+      max_tokens: 200
+
+  - name: "Error Handling Code"
+    description: "Test error handling code generation"
+    prompt: "Write Python code to handle file operations with proper error handling"
+    expect:
+      contains: ["try", "except", "finally", "with", "open"]
+      not_contains: ["error", "cannot"]
+      max_tokens: 250
+
+  - name: "Async Code Generation"
+    description: "Test asynchronous code generation"
+    prompt: "Write JavaScript code to fetch data from an API using async/await"
+    expect:
+      contains: ["async", "await", "fetch", "then", "catch"]
+      not_contains: ["error", "cannot"]
+      max_tokens: 200
+
+  - name: "Security-Focused Code"
+    description: "Test security-focused code generation"
+    prompt: "Write Python code to hash passwords securely"
+    expect:
+      contains: ["bcrypt", "hash", "salt", "verify", "security"]
+      not_contains: ["error", "cannot", "md5", "sha1"]
+      max_tokens: 200 

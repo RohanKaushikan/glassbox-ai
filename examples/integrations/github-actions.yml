@@ -1,0 +1,224 @@
+name: "AI Testing Pipeline"
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM
+
+env:
+  NODE_VERSION: '18'
+  GLASSBOX_VERSION: 'latest'
+
+jobs:
+  ai-testing:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test-suite: [basic, advanced, security]
+      fail-fast: false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Glassbox AI
+        run: |
+          npm install -g glassbox-ai@${{ env.GLASSBOX_VERSION }}
+          glassbox --version
+
+      - name: Setup environment
+        run: |
+          echo "Setting up test environment..."
+          mkdir -p .glassbox/results
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> $GITHUB_ENV
+          echo "OLLAMA_HOST=${{ secrets.OLLAMA_HOST || 'http://localhost:11434' }}" >> $GITHUB_ENV
+
+      - name: Run Basic AI Tests
+        if: matrix.test-suite == 'basic'
+        run: |
+          echo "Running basic AI tests..."
+          glassbox test examples/basic/chatbot-testing.yml
+          glassbox test examples/basic/document-summarization.yml
+          glassbox test examples/basic/code-generation.yml
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OLLAMA_HOST: ${{ secrets.OLLAMA_HOST }}
+
+      - name: Run Advanced AI Tests
+        if: matrix.test-suite == 'advanced'
+        run: |
+          echo "Running advanced AI tests..."
+          glassbox test examples/advanced/cost-optimization.yml
+          glassbox test examples/advanced/multi-model-testing.yml
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OLLAMA_HOST: ${{ secrets.OLLAMA_HOST }}
+
+      - name: Run Security Tests
+        if: matrix.test-suite == 'security'
+        run: |
+          echo "Running security tests..."
+          glassbox test examples/advanced/pii-detection.yml
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OLLAMA_HOST: ${{ secrets.OLLAMA_HOST }}
+
+      - name: Generate Test Report
+        run: |
+          echo "Generating test report..."
+          glassbox report --format html --output .glassbox/results/report.html
+          glassbox report --format json --output .glassbox/results/summary.json
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-test-results-${{ matrix.test-suite }}
+          path: |
+            .glassbox/results/
+            .glassbox/logs/
+          retention-days: 30
+
+      - name: Upload Test Coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-coverage-${{ matrix.test-suite }}
+          path: .glassbox/coverage/
+          retention-days: 90
+
+  reliability-testing:
+    runs-on: ubuntu-latest
+    needs: ai-testing
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Glassbox AI
+        run: npm install -g glassbox-ai@${{ env.GLASSBOX_VERSION }}
+
+      - name: Run Reliability Tests
+        run: |
+          echo "Running enterprise reliability tests..."
+          npm run test-reliability
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Upload Reliability Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: reliability-test-results
+          path: |
+            test-reliability-results/
+            .glassbox/reliability/
+          retention-days: 30
+
+  performance-benchmarking:
+    runs-on: ubuntu-latest
+    needs: ai-testing
+    if: github.event_name == 'schedule'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Glassbox AI
+        run: npm install -g glassbox-ai@${{ env.GLASSBOX_VERSION }}
+
+      - name: Run Performance Benchmarks
+        run: |
+          echo "Running performance benchmarks..."
+          glassbox test examples/benchmarks/response-time.yml
+          glassbox test examples/benchmarks/cost-optimization.yml
+          glassbox test examples/benchmarks/reliability.yml
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Upload Benchmark Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-benchmarks
+          path: .glassbox/benchmarks/
+          retention-days: 90
+
+  notification:
+    runs-on: ubuntu-latest
+    needs: [ai-testing, reliability-testing]
+    if: always()
+    
+    steps:
+      - name: Download Test Results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ai-test-results-*
+          merge-multiple: true
+
+      - name: Send Slack Notification
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#ai-testing'
+          text: |
+            AI Testing Pipeline failed!
+            Branch: ${{ github.ref }}
+            Commit: ${{ github.sha }}
+            Workflow: ${{ github.workflow }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Send Success Notification
+        if: success()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          channel: '#ai-testing'
+          text: |
+            ✅ AI Testing Pipeline completed successfully!
+            Branch: ${{ github.ref }}
+            Commit: ${{ github.sha }}
+            Workflow: ${{ github.workflow }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: ai-testing
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Security Scan
+        run: |
+          echo "Running security scan..."
+          glassbox security-scan examples/advanced/pii-detection.yml
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Upload Security Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-results
+          path: .glassbox/security/
+          retention-days: 30 

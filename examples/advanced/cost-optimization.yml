@@ -1,0 +1,136 @@
+name: "Cost Optimization Tests"
+description: "Testing AI system's cost efficiency and token usage optimization"
+
+settings:
+  max_cost_usd: 0.10
+  max_tokens: 1000
+  timeout_ms: 30000
+
+tests:
+  - name: "Concise Response Test"
+    description: "Test system's ability to provide concise responses"
+    prompt: "What is machine learning?"
+    expect:
+      max_tokens: 100
+      contains: ["machine learning", "AI", "algorithm"]
+      not_contains: ["I don't know", "cannot answer"]
+
+  - name: "Token Efficiency"
+    description: "Test system's token usage efficiency"
+    prompt: "Explain quantum computing in simple terms"
+    expect:
+      max_tokens: 200
+      cost_threshold: 0.02
+      contains: ["quantum", "computing", "bits", "qubits"]
+
+  - name: "Complex Query Optimization"
+    description: "Test system's handling of complex queries efficiently"
+    prompt: "Compare and contrast supervised learning, unsupervised learning, and reinforcement learning"
+    expect:
+      max_tokens: 300
+      cost_threshold: 0.05
+      contains: ["supervised", "unsupervised", "reinforcement", "learning"]
+
+  - name: "Prompt Optimization"
+    description: "Test system's response to optimized prompts"
+    prompt: "Summarize the key benefits of AI in 2 sentences"
+    expect:
+      max_tokens: 80
+      cost_threshold: 0.01
+      contains: ["AI", "benefits", "efficiency"]
+
+  - name: "Cost-Aware Response"
+    description: "Test system's awareness of cost constraints"
+    prompt: "List 5 programming languages"
+    expect:
+      max_tokens: 50
+      cost_threshold: 0.005
+      contains: ["programming", "languages"]
+
+  - name: "Efficient Code Generation"
+    description: "Test efficient code generation"
+    prompt: "Write a simple Python function to add two numbers"
+    expect:
+      max_tokens: 100
+      cost_threshold: 0.02
+      contains: ["def", "add", "return"]
+
+  - name: "Minimal Documentation"
+    description: "Test minimal but sufficient documentation"
+    prompt: "Write a brief comment explaining what a function does"
+    expect:
+      max_tokens: 30
+      cost_threshold: 0.005
+      contains: ["function", "comment"]
+
+  - name: "Structured Response"
+    description: "Test structured, concise responses"
+    prompt: "Provide 3 key points about cybersecurity"
+    expect:
+      max_tokens: 120
+      cost_threshold: 0.02
+      contains: ["cybersecurity", "security"]
+
+  - name: "Bullet Point Summary"
+    description: "Test bullet point format for efficiency"
+    prompt: "List the main features of cloud computing"
+    expect:
+      max_tokens: 150
+      cost_threshold: 0.03
+      contains: ["cloud", "computing", "features"]
+
+  - name: "One-Sentence Answer"
+    description: "Test single-sentence responses"
+    prompt: "What is the capital of France?"
+    expect:
+      max_tokens: 20
+      cost_threshold: 0.005
+      contains: ["Paris"]
+
+  - name: "Efficient Error Handling"
+    description: "Test concise error messages"
+    prompt: "What happens if I divide by zero?"
+    expect:
+      max_tokens: 60
+      cost_threshold: 0.01
+      contains: ["error", "exception", "zero"]
+
+  - name: "Cost-Effective Explanation"
+    description: "Test cost-effective explanations"
+    prompt: "Explain recursion in one paragraph"
+    expect:
+      max_tokens: 100
+      cost_threshold: 0.02
+      contains: ["recursion", "function", "calls"]
+
+  - name: "Token Budget Management"
+    description: "Test system's adherence to token budgets"
+    prompt: "Describe the benefits of agile methodology"
+    expect:
+      max_tokens: 200
+      cost_threshold: 0.04
+      contains: ["agile", "methodology", "benefits"]
+
+  - name: "Efficient Data Structure"
+    description: "Test efficient data structure explanations"
+    prompt: "Explain what a hash table is"
+    expect:
+      max_tokens: 150
+      cost_threshold: 0.03
+      contains: ["hash", "table", "key", "value"]
+
+  - name: "Minimal API Documentation"
+    description: "Test minimal API documentation"
+    prompt: "Write a brief API endpoint description"
+    expect:
+      max_tokens: 80
+      cost_threshold: 0.015
+      contains: ["API", "endpoint", "request"]
+
+  - name: "Cost-Performance Balance"
+    description: "Test balance between cost and performance"
+    prompt: "Explain the trade-off between speed and memory usage"
+    expect:
+      max_tokens: 180
+      cost_threshold: 0.035
+      contains: ["speed", "memory", "trade-off"] 

@@ -5,12 +5,31 @@ import path from 'path';
 import fs from 'fs';
 import { parseTestFiles } from './parser.js';
 import { runTests } from './runner.js';
+import { runTests as runTestsCached } from './runner-cached.js';
+import { OptimizedTestRunner } from './optimization/optimized-runner.js';
+import { 
+  handleErrorWithGracefulDegradation, 
+  createUserFriendlyMessage,
+  logger,
+  getErrorStats,
+  checkServiceHealth
+} from './error-handler.js';
+import { 
+  safeCreateDirectory,
+  validateFileSystem,
+  getFileSystemInfo,
+  checkDirectory,
+  checkDiskSpace,
+  logger as fsLogger
+} from './fs-error-handler.js';
+import { createCacheCommands } from './commands/cache.js';
+import { platformUtils } from './utils/platform-utils.js';
 
 const program = new Command();
 
-// CLI configuration
+// CLI configuration with platform-specific color support
 const CLI_CONFIG = {
-  colors: {
+  colors: platformUtils.supportsColors() ? {
     pass: chalk.green,
     fail: chalk.red,
     warning: chalk.yellow,
@@ -19,6 +38,15 @@ const CLI_CONFIG = {
     error: chalk.red,
     highlight: chalk.cyan,
     muted: chalk.gray
+  } : {
+    pass: (text) => text,
+    fail: (text) => text,
+    warning: (text) => text,
+    info: (text) => text,
+    success: (text) => text,
+    error: (text) => text,
+    highlight: (text) => text,
+    muted: (text) => text
   },
   symbols: {
     pass: '✓',
@@ -694,19 +722,35 @@ function displayTestResults(results) {
 }
 
 async function initCommand() {
-  const dir = path.resolve('.glassbox/tests');
-  const sampleFile = path.join(dir, 'sample-test.yml');
+  const dir = platformUtils.joinPaths(process.cwd(), '.glassbox', 'tests');
+  const sampleFile = platformUtils.joinPaths(dir, 'sample-test.yml');
   
   console.log(CLI_CONFIG.colors.info('🚀 Initializing Glassbox test environment...'));
   
   try {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-      console.log(CLI_CONFIG.colors.success(`✓ Created directory: ${dir}`));
-    } else {
-      console.log(CLI_CONFIG.colors.warning(`⚠ Directory already exists: ${dir}`));
+    // Validate file system before operations
+    const fsValidation = await validateFileSystem(sampleFile, { operation: 'init' });
+    if (!fsValidation.valid) {
+      console.error(CLI_CONFIG.colors.error('❌ File system validation failed:'));
+      fsValidation.errors.forEach(error => {
+        console.error(CLI_CONFIG.colors.error(`  ${error.message}`));
+      });
+      process.exit(1);
     }
     
+    // Create directory with safe operations
+    const dirResult = await safeCreateDirectory(dir, { recursive: true });
+    if (!dirResult.success) {
+      console.error(CLI_CONFIG.colors.error(`❌ Failed to create directory: ${dir}`));
+      console.error(CLI_CONFIG.colors.error(`  ${dirResult.error.message}`));
+      process.exit(1);
+    } else if (dirResult.existed) {
+      console.log(CLI_CONFIG.colors.warning(`⚠ Directory already exists: ${dir}`));
+    } else {
+      console.log(CLI_CONFIG.colors.success(`✓ Created directory: ${dir}`));
+    }
+    
+    // Create sample test file with safe writing
     if (!fs.existsSync(sampleFile)) {
       const sampleContent = `name: Sample Test Suite
 description: Example test suite for Glassbox CLI.
@@ -728,8 +772,20 @@ tests:
       contains: ["hello"]
       not_contains: ["bye"]
 `;
-      fs.writeFileSync(sampleFile, sampleContent, 'utf8');
-      console.log(CLI_CONFIG.colors.success(`✓ Created sample test file: ${sampleFile}`));
+      
+      const { safeWriteFile } = await import('./fs-error-handler.js');
+      const writeResult = await safeWriteFile(sampleFile, sampleContent, {
+        atomic: true,
+        backup: false
+      });
+      
+      if (!writeResult.success) {
+        console.error(CLI_CONFIG.colors.error(`❌ Failed to create sample test file: ${sampleFile}`));
+        console.error(CLI_CONFIG.colors.error(`  ${writeResult.error.message}`));
+        process.exit(1);
+      } else {
+        console.log(CLI_CONFIG.colors.success(`✓ Created sample test file: ${sampleFile}`));
+      }
     } else {
       console.log(CLI_CONFIG.colors.warning(`⚠ Sample test file already exists: ${sampleFile}`));
     }
@@ -741,10 +797,15 @@ tests:
     console.log(CLI_CONFIG.colors.muted('  3. Use "glassbox test --help" for more options'));
     
   } catch (error) {
-    console.error(handleSpecificError(error, {
-      details: 'Failed to initialize Glassbox test environment',
-      context: { operation: 'init', directory: dir }
-    }));
+    const errorResult = handleErrorWithGracefulDegradation(error, {
+      operation: 'init',
+      context: { 
+        directory: dir,
+        details: 'Failed to initialize Glassbox test environment'
+      }
+    });
+    
+    console.error(errorResult.userMessage);
     process.exit(1);
   }
 }
@@ -756,10 +817,14 @@ function versionCommand() {
     console.log(CLI_CONFIG.colors.highlight(`Glassbox CLI version: ${pkg.version}`));
     console.log(CLI_CONFIG.colors.muted('A professional AI testing framework'));
   } catch (err) {
-    console.error(handleSpecificError(err, {
-      details: 'Could not read version information',
-      context: { operation: 'version' }
-    }));
+    const errorResult = handleErrorWithGracefulDegradation(err, {
+      operation: 'version',
+      context: { 
+        details: 'Could not read version information'
+      }
+    });
+    
+    console.error(errorResult.userMessage);
   }
 }
 
@@ -778,7 +843,15 @@ program
   .option('--retry <number>', 'Number of retries for failed tests (default: 2)', '2')
   .option('--budget <amount>', 'Set budget limit in USD')
   .option('--export <format>', `Export results to file (formats: ${Object.keys(EXPORT_FORMATS).join(', ')})`)
-  .option('--output <path>', 'Output file path for exported results');
+  .option('--output <path>', 'Output file path for exported results')
+  .option('--cache', 'Enable response caching to improve performance and reduce costs')
+  .option('--no-cache', 'Disable response caching')
+  .option('--optimized', 'Use optimized runner with connection pooling, batching, and streaming')
+  .option('--batch-size <number>', 'Set batch size for optimized processing', '10')
+  .option('--max-concurrency <number>', 'Set maximum concurrent requests', '5')
+  .option('--enable-streaming', 'Enable streaming responses for large outputs')
+  .option('--enable-memory-profiling', 'Enable memory profiling and leak detection')
+  .option('--enable-progress', 'Enable detailed progress indicators');
 
 program
   .command('test')
@@ -819,7 +892,7 @@ program
     }
     
     // Set test directory
-    const testDir = command.parent.opts().testDir || path.resolve('.glassbox/tests');
+    const testDir = command.parent.opts().testDir || platformUtils.joinPaths(process.cwd(), '.glassbox', 'tests');
     
     if (!isQuiet) {
       console.log(CLI_CONFIG.colors.info(`🔍 Loading tests from: ${testDir}`));
@@ -829,7 +902,14 @@ program
     }
     
     try {
-      const testObjects = parseTestFiles(testDir);
+      // Use the new validation system with comprehensive checks
+      const validationOptions = {
+        checkAPIConfig: true,
+        checkNetwork: true,
+        sanitize: true
+      };
+      
+      const testObjects = await parseTestFiles(testDir, validationOptions);
       if (!testObjects.length) {
         throw new Error('No valid test files found');
       }
@@ -839,7 +919,54 @@ program
         console.log(CLI_CONFIG.colors.info('🚀 Starting test execution...'));
       }
       
-      const results = await runTests(testObjects);
+      // Choose runner based on optimization settings
+      const useOptimized = command.parent.opts().optimized;
+      const useCache = command.parent.opts().cache !== false; // Default to true unless explicitly disabled
+      
+      let results;
+      
+      if (useOptimized) {
+        // Use optimized runner with all performance features
+        const optimizedRunner = new OptimizedTestRunner({
+          maxConcurrency: parseInt(command.parent.opts().maxConcurrency || '5'),
+          batchSize: parseInt(command.parent.opts().batchSize || '10'),
+          enableStreaming: command.parent.opts().enableStreaming,
+          enableCaching: useCache,
+          enableProgress: command.parent.opts().enableProgress !== false,
+          enableMemoryProfiling: command.parent.opts().enableMemoryProfiling
+        });
+        
+        if (!isQuiet) {
+          console.log(CLI_CONFIG.colors.info('🚀 Optimized runner enabled with:'));
+          console.log(CLI_CONFIG.colors.gray(`  • Connection pooling`));
+          console.log(CLI_CONFIG.colors.gray(`  • Batch processing (${optimizedRunner.options.batchSize} tests/batch)`));
+          console.log(CLI_CONFIG.colors.gray(`  • Max concurrency: ${optimizedRunner.options.maxConcurrency}`));
+          if (optimizedRunner.options.enableStreaming) {
+            console.log(CLI_CONFIG.colors.gray(`  • Streaming responses`));
+          }
+          if (optimizedRunner.options.enableCaching) {
+            console.log(CLI_CONFIG.colors.gray(`  • Response caching`));
+          }
+          if (optimizedRunner.options.enableMemoryProfiling) {
+            console.log(CLI_CONFIG.colors.gray(`  • Memory profiling`));
+          }
+        }
+        
+        results = await optimizedRunner.runTests(testObjects);
+        
+        // Cleanup
+        await optimizedRunner.cleanup();
+        
+      } else {
+        // Use standard runner
+        const runner = useCache ? runTestsCached : runTests;
+        
+        if (!isQuiet && useCache) {
+          console.log(CLI_CONFIG.colors.info('💾 Caching enabled - responses will be cached for faster subsequent runs'));
+        }
+        
+        results = await runner(testObjects);
+      }
       
       // Handle export if specified
       const exportFormat = command.parent.opts().export;
@@ -858,14 +985,16 @@ program
       process.exit(results.aggregated.summary.failed > 0 ? 1 : 0);
       
     } catch (error) {
-      console.error(handleSpecificError(error, {
+      const errorResult = handleErrorWithGracefulDegradation(error, {
+        operation: 'test',
         context: { 
-          operation: 'test',
           testDir,
           model,
           options: command.parent.opts()
         }
-      }));
+      });
+      
+      console.error(errorResult.userMessage);
       process.exit(1);
     }
   });
@@ -876,15 +1005,308 @@ program
   .action(initCommand);
 
 program
+  .command('validate')
+  .description('Validate test files without running them')
+  .option('--test-dir <path>', 'Custom test directory path (default: .glassbox/tests/)')
+  .option('--check-api', 'Check API keys and network connectivity')
+  .option('--no-sanitize', 'Skip input sanitization')
+  .action(async (options, command) => {
+    const testDir = options.testDir || path.resolve('.glassbox/tests');
+    
+    if (!isQuiet) {
+      console.log(CLI_CONFIG.colors.info(`🔍 Validating tests in: ${testDir}`));
+    }
+    
+    try {
+      const { validateTestDirectory } = await import('./validators/input-validator.js');
+      
+      const validationOptions = {
+        checkAPIConfig: options.checkApi !== false,
+        checkNetwork: options.checkApi !== false,
+        sanitize: options.sanitize !== false
+      };
+      
+      const results = await validateTestDirectory(testDir, validationOptions);
+      
+      if (results.valid) {
+        console.log(CLI_CONFIG.colors.success('✓ All test files are valid!'));
+        console.log(CLI_CONFIG.colors.info(`📁 Validated ${results.files.length} file(s)`));
+      } else {
+        console.log(CLI_CONFIG.colors.error('❌ Validation failed!'));
+        console.log(CLI_CONFIG.colors.info(`📁 Checked ${results.files.length} file(s)`));
+        console.log(CLI_CONFIG.colors.error(`❌ Found ${results.totalErrors} error(s)`));
+        
+        // Display detailed errors for each file
+        results.files.forEach(fileResult => {
+          if (!fileResult.valid) {
+            console.log(CLI_CONFIG.colors.error(`\n📄 ${fileResult.file}:`));
+            fileResult.errors.forEach(error => {
+              console.log(`  ${error.message}`);
+            });
+          }
+        });
+        
+        process.exit(1);
+      }
+      
+    } catch (error) {
+      const errorResult = handleErrorWithGracefulDegradation(error, {
+        operation: 'validate',
+        context: { 
+          testDir,
+          options: command.parent.opts()
+        }
+      });
+      
+      console.error(errorResult.userMessage);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('health')
+  .description('Check health status of AI services and diagnose issues')
+  .option('--provider <name>', 'Check specific provider (openai, ollama)')
+  .option('--verbose', 'Show detailed health information')
+  .action(async (options, command) => {
+    const provider = options.provider;
+    const isVerbose = options.verbose || command.parent.opts().verbose;
+    
+    if (!isQuiet) {
+      console.log(CLI_CONFIG.colors.info('🏥 Checking AI service health...'));
+    }
+    
+    try {
+      const providers = provider ? [provider] : ['openai', 'ollama'];
+      const results = {};
+      
+      for (const prov of providers) {
+        if (!isQuiet) {
+          console.log(CLI_CONFIG.colors.info(`\n🔍 Checking ${prov}...`));
+        }
+        
+        const health = await checkServiceHealth(prov);
+        results[prov] = health;
+        
+        if (health.healthy) {
+          console.log(CLI_CONFIG.colors.success(`✓ ${prov} is healthy`));
+        } else {
+          console.log(CLI_CONFIG.colors.error(`❌ ${prov} is unhealthy: ${health.reason}`));
+        }
+        
+        if (isVerbose && health.error) {
+          console.log(CLI_CONFIG.colors.gray(`  Error: ${health.error}`));
+          console.log(CLI_CONFIG.colors.gray(`  Message: ${health.message}`));
+        }
+      }
+      
+      // Show error statistics
+      const errorStats = getErrorStats();
+      if (errorStats.totalErrors > 0) {
+        console.log(CLI_CONFIG.colors.warning(`\n⚠️  Error Statistics:`));
+        console.log(CLI_CONFIG.colors.gray(`  Total errors: ${errorStats.totalErrors}`));
+        
+        if (Object.keys(errorStats.errorTypes).length > 0) {
+          console.log(CLI_CONFIG.colors.gray(`  Error types:`));
+          Object.entries(errorStats.errorTypes).forEach(([type, count]) => {
+            console.log(CLI_CONFIG.colors.gray(`    ${type}: ${count}`));
+          });
+        }
+      }
+      
+      // Overall health assessment
+      const healthyProviders = Object.values(results).filter(r => r.healthy).length;
+      const totalProviders = Object.keys(results).length;
+      
+      if (healthyProviders === totalProviders) {
+        console.log(CLI_CONFIG.colors.success('\n🎉 All services are healthy!'));
+      } else if (healthyProviders > 0) {
+        console.log(CLI_CONFIG.colors.warning(`\n⚠️  Partial availability: ${healthyProviders}/${totalProviders} services healthy`));
+      } else {
+        console.log(CLI_CONFIG.colors.error('\n❌ All services are unhealthy'));
+        process.exit(1);
+      }
+      
+    } catch (error) {
+      const errorResult = handleErrorWithGracefulDegradation(error, {
+        operation: 'health_check',
+        context: { provider }
+      });
+      
+      console.error(errorResult.userMessage);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('diagnose')
+  .description('Diagnose and troubleshoot common issues')
+  .option('--check-api', 'Check API configuration')
+  .option('--check-network', 'Check network connectivity')
+  .option('--check-models', 'Check model availability')
+  .option('--check-fs', 'Check file system and permissions')
+  .action(async (options, command) => {
+    if (!isQuiet) {
+      console.log(CLI_CONFIG.colors.info('🔧 Running diagnostics...'));
+    }
+    
+    try {
+      const checks = [];
+      
+      // API configuration check
+      if (options.checkApi) {
+        checks.push(async () => {
+          console.log(CLI_CONFIG.colors.info('\n🔑 Checking API configuration...'));
+          
+          const openaiKey = process.env.OPENAI_API_KEY;
+          const anthropicKey = process.env.ANTHROPIC_API_KEY;
+          
+          if (!openaiKey && !anthropicKey) {
+            console.log(CLI_CONFIG.colors.error('❌ No API keys found'));
+            console.log(CLI_CONFIG.colors.gray('  Set OPENAI_API_KEY or ANTHROPIC_API_KEY environment variables'));
+            return false;
+          }
+          
+          if (openaiKey) {
+            console.log(CLI_CONFIG.colors.success('✓ OPENAI_API_KEY is set'));
+          }
+          
+          if (anthropicKey) {
+            console.log(CLI_CONFIG.colors.success('✓ ANTHROPIC_API_KEY is set'));
+          }
+          
+          return true;
+        });
+      }
+      
+      // Network connectivity check
+      if (options.checkNetwork) {
+        checks.push(async () => {
+          console.log(CLI_CONFIG.colors.info('\n🌐 Checking network connectivity...'));
+          
+          const endpoints = [
+            { name: 'OpenAI API', url: 'https://api.openai.com' },
+            { name: 'Anthropic API', url: 'https://api.anthropic.com' },
+            { name: 'Ollama (local)', url: 'http://localhost:11434' }
+          ];
+          
+          for (const endpoint of endpoints) {
+            try {
+              const response = await fetch(endpoint.url, { 
+                method: 'HEAD',
+                timeout: 5000
+              });
+              console.log(CLI_CONFIG.colors.success(`✓ ${endpoint.name} is reachable`));
+            } catch (error) {
+              console.log(CLI_CONFIG.colors.error(`❌ ${endpoint.name} is not reachable`));
+            }
+          }
+          
+          return true;
+        });
+      }
+      
+      // Model availability check
+      if (options.checkModels) {
+        checks.push(async () => {
+          console.log(CLI_CONFIG.colors.info('\n🤖 Checking model availability...'));
+          
+          // Check Ollama models
+          try {
+            const { getOllamaModels } = await import('./models/ollama-client.js');
+            const models = await getOllamaModels();
+            
+            if (models.error) {
+              console.log(CLI_CONFIG.colors.error('❌ Ollama service not available'));
+            } else {
+              console.log(CLI_CONFIG.colors.success(`✓ Ollama has ${models.count} models available`));
+              if (models.models.length > 0) {
+                console.log(CLI_CONFIG.colors.gray(`  Available: ${models.models.join(', ')}`));
+              }
+            }
+          } catch (error) {
+            console.log(CLI_CONFIG.colors.error('❌ Ollama service check failed'));
+          }
+          
+          return true;
+        });
+      }
+      
+      // File system check
+      if (options.checkFs) {
+        checks.push(async () => {
+          console.log(CLI_CONFIG.colors.info('\n💾 Checking file system...'));
+          
+          const testDir = path.resolve('.glassbox/tests');
+          const sampleFile = path.join(testDir, 'sample-test.yml');
+          
+          // Check directory permissions
+          const dirCheck = await checkDirectory(testDir, { operation: 'diagnose' });
+          if (dirCheck.valid) {
+            console.log(CLI_CONFIG.colors.success('✓ Test directory accessible'));
+          } else {
+            console.log(CLI_CONFIG.colors.error('❌ Test directory issues:'));
+            dirCheck.errors.forEach(error => {
+              console.log(CLI_CONFIG.colors.error(`  ${error.message}`));
+            });
+          }
+          
+          // Check disk space
+          const spaceCheck = await checkDiskSpace(testDir);
+          if (spaceCheck.sufficient) {
+            console.log(CLI_CONFIG.colors.success(`✓ Sufficient disk space: ${Math.round(spaceCheck.freeSpace / 1024 / 1024)}MB available`));
+          } else {
+            console.log(CLI_CONFIG.colors.error(`❌ Insufficient disk space: ${spaceCheck.error.message}`));
+          }
+          
+          // Check file system info
+          const fsInfo = getFileSystemInfo(sampleFile);
+          if (!fsInfo.error) {
+            console.log(CLI_CONFIG.colors.success('✓ File system information:'));
+            console.log(CLI_CONFIG.colors.gray(`  Platform: ${fsInfo.system.platform}`));
+            console.log(CLI_CONFIG.colors.gray(`  Architecture: ${fsInfo.system.arch}`));
+            console.log(CLI_CONFIG.colors.gray(`  Home directory: ${fsInfo.system.homedir}`));
+            console.log(CLI_CONFIG.colors.gray(`  Temp directory: ${fsInfo.system.tmpdir}`));
+          } else {
+            console.log(CLI_CONFIG.colors.error('❌ Could not get file system information'));
+          }
+          
+          return true;
+        });
+      }
+      
+      // Run all checks
+      for (const check of checks) {
+        await check();
+      }
+      
+      console.log(CLI_CONFIG.colors.success('\n✅ Diagnostics completed'));
+      
+    } catch (error) {
+      const errorResult = handleErrorWithGracefulDegradation(error, {
+        operation: 'diagnose',
+        context: { options }
+      });
+      
+      console.error(errorResult.userMessage);
+      process.exit(1);
+    }
+  });
+
+program
   .command('version')
   .description('Show version number and framework information')
   .action(versionCommand);
+
+// Add cache management commands
+program.addCommand(createCacheCommands());
 
 // Enhanced help text
 program.addHelpText('after', `
 
 Examples:
   $ glassbox init                    # Initialize test environment
+  $ glassbox validate               # Validate test files without running
   $ glassbox test                   # Run all tests
   $ glassbox test --verbose         # Run with detailed output
   $ glassbox test --json            # Output results in JSON format
@@ -894,6 +1316,17 @@ Examples:
   $ glassbox test --test-dir ./tests # Use custom test directory
   $ glassbox test --export html     # Export results as HTML report
   $ glassbox test --export json --output results.json # Export to specific file
+  $ glassbox test --cache           # Enable response caching (default)
+  $ glassbox test --no-cache        # Disable response caching
+  $ glassbox test --optimized       # Use optimized runner with all performance features
+  $ glassbox test --optimized --batch-size 20 --max-concurrency 10  # Custom optimization settings
+  $ glassbox test --optimized --enable-streaming --enable-memory-profiling  # Advanced optimization
+  $ glassbox health                 # Check AI service health
+  $ glassbox diagnose               # Diagnose common issues
+  $ glassbox cache stats            # Show cache statistics
+  $ glassbox cache list             # List cache entries
+  $ glassbox cache clear            # Clear all cache
+  $ glassbox cache cleanup          # Clean up expired entries
 
 Configuration Options:
   --timeout <ms>      Set test timeout (default: 30000ms)

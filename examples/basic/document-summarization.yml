@@ -1,0 +1,120 @@
+name: "Document Summarization Tests"
+description: "Testing AI document summarization accuracy and quality"
+
+settings:
+  max_cost_usd: 0.05
+  max_tokens: 500
+  timeout_ms: 30000
+
+tests:
+  - name: "Article Summarization"
+    description: "Test summarization of news articles"
+    prompt: |
+      Summarize this article in 3 sentences:
+      
+      Artificial intelligence has revolutionized the way businesses operate. 
+      Companies are increasingly adopting AI technologies to improve efficiency, 
+      reduce costs, and enhance customer experiences. However, the rapid 
+      adoption of AI also raises concerns about job displacement and ethical 
+      considerations that need to be addressed.
+    expect:
+      contains: ["AI", "business", "efficiency", "concerns"]
+      max_tokens: 100
+      similarity_threshold: 0.8
+
+  - name: "Technical Document Summary"
+    description: "Test technical document summarization"
+    prompt: |
+      Create a concise summary of this technical specification:
+      
+      The API requires authentication via OAuth 2.0. All requests must 
+      include a valid access token in the Authorization header. Rate 
+      limiting is set to 1000 requests per hour per user. Responses 
+      are returned in JSON format with standard HTTP status codes.
+    expect:
+      contains: ["API", "authentication", "OAuth", "rate limiting"]
+      max_tokens: 80
+
+  - name: "Research Paper Summary"
+    description: "Test academic paper summarization"
+    prompt: |
+      Summarize this research paper abstract:
+      
+      This study investigates the effectiveness of machine learning algorithms 
+      in predicting customer churn. Using a dataset of 10,000 customers, 
+      we compared the performance of Random Forest, Support Vector Machines, 
+      and Neural Networks. Results show that Random Forest achieved 85% 
+      accuracy, outperforming other algorithms by 10-15%.
+    expect:
+      contains: ["machine learning", "customer churn", "Random Forest", "accuracy"]
+      max_tokens: 120
+
+  - name: "Legal Document Summary"
+    description: "Test legal document summarization"
+    prompt: |
+      Summarize this legal contract section:
+      
+      The parties agree that all intellectual property developed during 
+      the term of this agreement shall be jointly owned. Neither party 
+      may transfer or license such IP without written consent from the 
+      other party. This provision survives termination of the agreement.
+    expect:
+      contains: ["intellectual property", "jointly owned", "consent", "termination"]
+      max_tokens: 80
+
+  - name: "Financial Report Summary"
+    description: "Test financial document summarization"
+    prompt: |
+      Summarize this quarterly financial report:
+      
+      Q3 revenue increased 15% year-over-year to $50M, driven by strong 
+      subscription growth. Operating margin improved to 25% from 20% 
+      due to cost optimization. Customer acquisition cost decreased 20% 
+      while customer lifetime value increased 30%.
+    expect:
+      contains: ["revenue", "growth", "margin", "cost"]
+      max_tokens: 100
+
+  - name: "Meeting Minutes Summary"
+    description: "Test meeting minutes summarization"
+    prompt: |
+      Summarize these meeting minutes:
+      
+      Team discussed Q4 product roadmap. Engineering team needs 3 weeks 
+      for new feature development. Marketing will launch campaign on 
+      December 1st. Budget approved for additional headcount. Next 
+      meeting scheduled for November 15th.
+    expect:
+      contains: ["roadmap", "development", "campaign", "budget"]
+      max_tokens: 80
+
+  - name: "Long Document Summary"
+    description: "Test summarization of longer documents"
+    prompt: |
+      Summarize this lengthy document in 5 key points:
+      
+      The company's digital transformation initiative began in 2020 with 
+      the goal of modernizing legacy systems and improving operational 
+      efficiency. Phase 1 involved migrating core applications to the 
+      cloud, which was completed in 2021. Phase 2 focused on implementing 
+      AI-powered analytics, completed in 2022. Phase 3 introduced 
+      automation tools, finished in 2023. The final phase involves 
+      advanced machine learning capabilities, scheduled for completion 
+      in 2024. Overall, the initiative has reduced operational costs 
+      by 30% and improved customer satisfaction scores by 25%.
+    expect:
+      contains: ["digital transformation", "phases", "cloud", "AI", "automation"]
+      max_tokens: 150
+
+  - name: "Multi-Language Summary"
+    description: "Test summarization in different languages"
+    prompt: |
+      Summarize this Spanish text in English:
+      
+      La inteligencia artificial ha transformado la forma en que 
+      trabajamos. Las empresas están adoptando tecnologías de IA 
+      para mejorar la productividad y reducir costos. Sin embargo, 
+      también plantea desafíos éticos que debemos abordar.
+    expect:
+      contains: ["artificial intelligence", "business", "productivity", "ethical"]
+      max_tokens: 80 

@@ -1,0 +1,27 @@
+name: "Sample AI Test"
+description: "A sample test to get you started"
+
+settings:
+  provider: "openai"
+  model: "gpt-3.5-turbo"
+  timeout_ms: 30000
+  max_retries: 2
+
+tests:
+  - name: "Basic Response Test"
+    description: "Test basic AI response"
+    prompt: "Hello, how are you today?"
+    expect:
+      contains: ["hello", "hi", "good", "fine"]
+      not_contains: ["error", "sorry", "cannot"]
+    max_tokens: 100
+    temperature: 0.7
+
+  - name: "Code Generation Test"
+    description: "Test code generation capabilities"
+    prompt: "Write a simple JavaScript function to add two numbers"
+    expect:
+      contains: ["function", "return", "add", "numbers"]
+      not_contains: ["error", "cannot", "sorry"]
+    max_tokens: 200
+    temperature: 0.3

@@ -1,0 +1,206 @@
+name: "Best Practice: Test Organization"
+description: "Demonstrates proper test organization patterns"
+
+settings:
+  max_cost_usd: 0.10
+  max_tokens: 500
+  timeout_ms: 30000
+
+# Best Practice: Group related tests together with clear naming
+tests:
+  # Authentication Tests
+  - name: "Login Success"
+    description: "Test successful user login"
+    prompt: "I want to log in with username john@example.com"
+    expect:
+      contains: ["login", "authentication", "success"]
+      block_patterns: ["password"]
+
+  - name: "Login Failure"
+    description: "Test failed login attempt"
+    prompt: "I forgot my password"
+    expect:
+      contains: ["reset", "password", "help"]
+      not_contains: ["password", "specific"]
+
+  - name: "Account Lockout"
+    description: "Test account lockout after multiple failed attempts"
+    prompt: "I've tried logging in 5 times and it's still not working"
+    expect:
+      contains: ["lockout", "security", "temporary", "unlock"]
+      not_contains: ["password", "specific"]
+
+  # Product Search Tests
+  - name: "Product Search Success"
+    description: "Test successful product search"
+    prompt: "Find wireless headphones"
+    expect:
+      contains: ["headphones", "wireless", "results"]
+      max_tokens: 150
+
+  - name: "Product Search No Results"
+    description: "Test product search with no results"
+    prompt: "Find nonexistent product xyz123"
+    expect:
+      contains: ["no results", "try", "suggest"]
+      not_contains: ["found", "available"]
+
+  - name: "Product Search Filters"
+    description: "Test product search with filters"
+    prompt: "Show me red shoes under $50"
+    expect:
+      contains: ["red", "shoes", "price", "filter"]
+      not_contains: ["cannot", "unable"]
+
+  # Order Management Tests
+  - name: "Order Creation"
+    description: "Test order creation process"
+    prompt: "I want to place an order for item #123"
+    expect:
+      contains: ["order", "place", "confirm", "checkout"]
+      not_contains: ["cannot", "unable"]
+
+  - name: "Order Modification"
+    description: "Test order modification"
+    prompt: "I want to change the shipping address for my order"
+    expect:
+      contains: ["modify", "change", "address", "shipping"]
+      not_contains: ["cannot", "unable"]
+
+  - name: "Order Cancellation"
+    description: "Test order cancellation"
+    prompt: "I want to cancel my order #ORD-456"
+    expect:
+      contains: ["cancel", "order", "refund", "process"]
+      not_contains: ["cannot", "unable"]
+
+  # Payment Tests
+  - name: "Payment Success"
+    description: "Test successful payment processing"
+    prompt: "I want to pay with my credit card"
+    expect:
+      contains: ["payment", "card", "process", "secure"]
+      block_patterns: ["credit_card", "card_number"]
+
+  - name: "Payment Failure"
+    description: "Test payment failure handling"
+    prompt: "My payment was declined"
+    expect:
+      contains: ["declined", "try", "alternative", "help"]
+      not_contains: ["account", "balance"]
+
+  # Customer Support Tests
+  - name: "General Inquiry"
+    description: "Test general customer support"
+    prompt: "I have a question about your products"
+    expect:
+      contains: ["help", "assist", "support", "question"]
+      not_contains: ["cannot", "unable"]
+
+  - name: "Technical Support"
+    description: "Test technical support"
+    prompt: "The website is not working properly"
+    expect:
+      contains: ["technical", "troubleshoot", "support", "help"]
+      not_contains: ["cannot", "unable"]
+
+  - name: "Complaint Handling"
+    description: "Test complaint handling"
+    prompt: "I'm not satisfied with my recent purchase"
+    expect:
+      contains: ["sorry", "concern", "help", "resolve"]
+      not_contains: ["cannot", "unable"]
+
+  # Security Tests
+  - name: "PII Protection"
+    description: "Test PII protection"
+    prompt: "My credit card number is 4111-1111-1111-1111"
+    expect:
+      block_patterns: ["credit_card", "card_number"]
+      not_contains: ["4111", "1111"]
+      contains: ["security", "privacy"]
+
+  - name: "SQL Injection Prevention"
+    description: "Test SQL injection prevention"
+    prompt: "'; DROP TABLE users; --"
+    expect:
+      not_contains: ["DROP", "TABLE", "users"]
+      contains: ["cannot", "invalid", "security"]
+
+  - name: "XSS Prevention"
+    description: "Test XSS prevention"
+    prompt: "<script>alert('xss')</script>"
+    expect:
+      not_contains: ["<script>", "alert"]
+      contains: ["cannot", "invalid", "security"]
+
+  # Performance Tests
+  - name: "Response Time"
+    description: "Test response time"
+    prompt: "What is the weather today?"
+    expect:
+      max_response_time_ms: 5000
+      contains: ["weather", "temperature", "forecast"]
+
+  - name: "Concurrent Requests"
+    description: "Test concurrent request handling"
+    prompt: "I need help with multiple issues"
+    expect:
+      contains: ["help", "assist", "support"]
+      not_contains: ["busy", "unavailable"]
+
+  # Error Handling Tests
+  - name: "Graceful Error Response"
+    description: "Test graceful error handling"
+    prompt: "This is a malformed request that should fail"
+    expect:
+      contains: ["error", "cannot", "please", "try"]
+      not_contains: ["crash", "exception", "stack trace"]
+      max_tokens: 100
+
+  - name: "Timeout Handling"
+    description: "Test timeout handling"
+    prompt: "Generate a very long response that might timeout"
+    expect:
+      max_tokens: 50
+      timeout_ms: 10000
+      contains: ["timeout", "limit", "shorter"]
+
+  # Accessibility Tests
+  - name: "Accessibility Support"
+    description: "Test accessibility features"
+    prompt: "I'm visually impaired, can you help me navigate?"
+    expect:
+      contains: ["accessibility", "help", "assist", "support"]
+      not_contains: ["cannot", "unable"]
+
+  - name: "Language Support"
+    description: "Test multi-language support"
+    prompt: "¿Puedes ayudarme en español?"
+    expect:
+      contains: ["español", "español", "ayuda", "asistencia"]
+      not_contains: ["cannot", "unable"]
+
+# Best Practice: Include comprehensive metrics and monitoring
+metrics:
+  test_categories:
+    authentication: 3
+    product_search: 3
+    order_management: 3
+    payment: 2
+    customer_support: 3
+    security: 3
+    performance: 2
+    error_handling: 2
+    accessibility: 2
+
+  coverage_targets:
+    functional_coverage: "95%"
+    security_coverage: "100%"
+    performance_coverage: "90%"
+    accessibility_coverage: "85%"
+
+  reliability_targets:
+    success_rate: "99%"
+    response_time_p95: "3s"
+    error_rate: "<1%" 

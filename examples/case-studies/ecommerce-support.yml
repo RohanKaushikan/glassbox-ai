@@ -1,0 +1,157 @@
+name: "E-commerce Customer Support Case Study"
+description: "Automated testing of customer support chatbot"
+
+business_context:
+  company: "TechCorp E-commerce"
+  challenge: "Manual testing of 50+ customer support scenarios"
+  solution: "Automated AI testing with Glassbox AI"
+  results:
+    - "Testing time reduced from 4 hours to 15 minutes"
+    - "Test coverage increased from 60% to 95%"
+    - "Bug detection improved by 40%"
+    - "Customer satisfaction improved by 25%"
+    - "Support ticket volume reduced by 30%"
+
+settings:
+  max_cost_usd: 0.20
+  max_tokens: 1000
+  timeout_ms: 30000
+  reliability:
+    enabled: true
+    circuit_breaker:
+      failure_threshold: 3
+      success_threshold: 2
+      timeout: 30000
+
+tests:
+  - name: "Order Status Inquiry"
+    description: "Test order status lookup functionality"
+    prompt: "Where is my order #ORD-12345?"
+    expect:
+      contains: ["order", "status", "tracking", "shipping"]
+      not_contains: ["cannot find", "error"]
+      max_tokens: 200
+      block_patterns: ["credit_card", "ssn"]
+
+  - name: "Return Request"
+    description: "Test return and refund process"
+    prompt: "I want to return item #ITEM-789"
+    expect:
+      contains: ["return", "refund", "process", "policy"]
+      not_contains: ["cannot", "unable"]
+      block_patterns: ["credit_card"]
+
+  - name: "Product Recommendation"
+    description: "Test product recommendation capabilities"
+    prompt: "I'm looking for wireless headphones under $100"
+    expect:
+      contains: ["headphones", "wireless", "recommend", "price"]
+      not_contains: ["don't know", "cannot help"]
+
+  - name: "Payment Issues"
+    description: "Test payment problem resolution"
+    prompt: "My payment was declined, what should I do?"
+    expect:
+      contains: ["payment", "declined", "card", "try", "alternative"]
+      not_contains: ["account", "balance", "specific"]
+      block_patterns: ["credit_card", "card_number"]
+
+  - name: "Account Access"
+    description: "Test account access and login support"
+    prompt: "I can't log into my account"
+    expect:
+      contains: ["login", "account", "password", "reset", "help"]
+      not_contains: ["cannot", "unable"]
+      block_patterns: ["password", "email"]
+
+  - name: "Shipping Information"
+    description: "Test shipping and delivery inquiries"
+    prompt: "When will my package arrive?"
+    expect:
+      contains: ["shipping", "delivery", "tracking", "arrive", "estimate"]
+      not_contains: ["cannot", "unable"]
+
+  - name: "Pricing Questions"
+    description: "Test pricing and cost inquiries"
+    prompt: "How much does shipping cost?"
+    expect:
+      contains: ["shipping", "cost", "price", "fee", "rates"]
+      not_contains: ["don't know", "cannot"]
+
+  - name: "Technical Support"
+    description: "Test technical support capabilities"
+    prompt: "The website is not loading properly"
+    expect:
+      contains: ["troubleshoot", "technical", "support", "help", "steps"]
+      not_contains: ["don't know", "cannot help"]
+
+  - name: "Product Availability"
+    description: "Test product availability inquiries"
+    prompt: "Is this item in stock?"
+    expect:
+      contains: ["stock", "availability", "inventory", "check"]
+      not_contains: ["cannot", "unable"]
+
+  - name: "Discount Codes"
+    description: "Test discount and promotion handling"
+    prompt: "Do you have any discount codes?"
+    expect:
+      contains: ["discount", "promotion", "code", "offer", "deal"]
+      not_contains: ["cannot", "unable"]
+
+  - name: "Size and Fit"
+    description: "Test size and fit recommendations"
+    prompt: "What size should I order for this shirt?"
+    expect:
+      contains: ["size", "fit", "measurement", "chart", "recommend"]
+      not_contains: ["cannot", "unable"]
+
+  - name: "International Shipping"
+    description: "Test international shipping inquiries"
+    prompt: "Do you ship to Canada?"
+    expect:
+      contains: ["international", "shipping", "Canada", "delivery", "rates"]
+      not_contains: ["cannot", "unable"]
+
+  - name: "Gift Cards"
+    description: "Test gift card inquiries"
+    prompt: "How do I redeem a gift card?"
+    expect:
+      contains: ["gift card", "redeem", "balance", "apply", "code"]
+      not_contains: ["cannot", "unable"]
+
+  - name: "Loyalty Program"
+    description: "Test loyalty program inquiries"
+    prompt: "How do I earn points?"
+    expect:
+      contains: ["loyalty", "points", "rewards", "earn", "program"]
+      not_contains: ["cannot", "unable"]
+
+  - name: "Customer Service Escalation"
+    description: "Test escalation to human support"
+    prompt: "I need to speak to a human representative"
+    expect:
+      contains: ["human", "representative", "agent", "escalate", "transfer"]
+      not_contains: ["cannot", "unable"]
+
+metrics:
+  before_implementation:
+    test_coverage: "60%"
+    testing_time: "4 hours"
+    bug_detection_rate: "70%"
+    customer_satisfaction: "75%"
+    support_ticket_volume: "1000/month"
+
+  after_implementation:
+    test_coverage: "95%"
+    testing_time: "15 minutes"
+    bug_detection_rate: "90%"
+    customer_satisfaction: "90%"
+    support_ticket_volume: "700/month"
+
+  improvement:
+    test_coverage: "+35%"
+    testing_time: "-94%"
+    bug_detection_rate: "+20%"
+    customer_satisfaction: "+15%"
+    support_ticket_volume: "-30%" 

@@ -1,0 +1,39 @@
+# Invalid YAML syntax example
+# This file demonstrates various YAML syntax errors
+
+name: invalid_syntax_demo
+description: This file has YAML syntax errors to test validation
+settings:
+  provider: openai
+  model: gpt-3.5-turbo
+  max_tokens: 1000
+  temperature: 0.7
+  safety_checks:
+    block_pii: true
+    block_email: true
+    block_phone: true
+    block_ssn: true
+
+tests:
+  - name: test_with_syntax_error
+    description: This test has a syntax error in the expect_contains field
+    prompt: "Write a simple Python function"
+    expect_contains: ["def", "return"]  # Missing closing bracket
+    expect_not_contains: ["eval", "exec"]
+    max_tokens: 200
+    max_cost_usd: 0.005
+
+  - name: test_with_invalid_indentation
+  description: This test has incorrect indentation
+  prompt: "Write a Python function"
+  expect_contains: ["def", "return"]
+  max_tokens: 200
+  max_cost_usd: 0.005
+
+  - name: test_with_duplicate_key
+    description: This test has a duplicate key
+    prompt: "Write a Python function"
+    expect_contains: ["def", "return"]
+    expect_contains: ["function"]  # Duplicate key
+    max_tokens: 200
+    max_cost_usd: 0.005 

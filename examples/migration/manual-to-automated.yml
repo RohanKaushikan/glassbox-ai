@@ -1,0 +1,178 @@
+name: "Migration: Manual to Automated Testing"
+description: "Guide for migrating from manual to automated AI testing"
+
+migration_steps:
+  1: "Identify manual test scenarios"
+  2: "Convert to YAML test files"
+  3: "Set up CI/CD integration"
+  4: "Implement reliability features"
+  5: "Monitor and optimize"
+
+before_example:
+  manual_test: |
+    Manual Test: Customer Support Greeting
+    - Ask: "Hello, I need help"
+    - Expected: Contains greeting and offer to help
+    - Time: 5 minutes per test
+    - Coverage: 20 scenarios
+    - Reliability: Human-dependent
+    - Consistency: Variable
+    - Scalability: Limited
+
+after_example:
+  automated_test: |
+    Automated Test:
+    - File: chatbot-testing.yml
+    - Time: 15 seconds for all tests
+    - Coverage: 50+ scenarios
+    - Reliability: Circuit breakers, fallbacks
+    - Consistency: 100% reproducible
+    - Scalability: Unlimited parallel execution
+
+settings:
+  max_cost_usd: 0.15
+  max_tokens: 500
+  timeout_ms: 30000
+  reliability:
+    enabled: true
+    auto_start: true
+
+tests:
+  - name: "Migrated Greeting Test"
+    description: "Automated version of manual greeting test"
+    prompt: "Hello, I need help"
+    expect:
+      contains: ["hello", "greeting", "help", "assist"]
+      not_contains: ["sorry", "unavailable"]
+      max_tokens: 150
+
+  - name: "Migrated Order Status Test"
+    description: "Automated version of manual order status test"
+    prompt: "What's the status of my order #12345?"
+    expect:
+      contains: ["order", "status", "tracking"]
+      not_contains: ["cannot", "unable", "error"]
+      block_patterns: ["credit_card", "ssn"]
+
+  - name: "Migrated Payment Test"
+    description: "Automated version of manual payment test"
+    prompt: "My payment was declined"
+    expect:
+      contains: ["payment", "declined", "help", "try"]
+      not_contains: ["account", "balance", "specific"]
+      block_patterns: ["credit_card"]
+
+  - name: "Migrated Technical Support Test"
+    description: "Automated version of manual technical support test"
+    prompt: "The website is not loading properly"
+    expect:
+      contains: ["technical", "troubleshoot", "support", "help"]
+      not_contains: ["don't know", "cannot help"]
+
+  - name: "Migrated Return Test"
+    description: "Automated version of manual return test"
+    prompt: "I want to return the item I bought"
+    expect:
+      contains: ["return", "refund", "process", "policy"]
+      not_contains: ["cannot", "unable"]
+
+  - name: "Migrated Product Search Test"
+    description: "Automated version of manual product search test"
+    prompt: "Find wireless headphones under $100"
+    expect:
+      contains: ["headphones", "wireless", "recommend", "price"]
+      not_contains: ["don't know", "cannot help"]
+
+  - name: "Migrated Account Test"
+    description: "Automated version of manual account test"
+    prompt: "I can't log into my account"
+    expect:
+      contains: ["login", "account", "password", "reset"]
+      not_contains: ["cannot", "unable"]
+      block_patterns: ["password", "email"]
+
+  - name: "Migrated Shipping Test"
+    description: "Automated version of manual shipping test"
+    prompt: "When will my package arrive?"
+    expect:
+      contains: ["shipping", "delivery", "tracking", "arrive"]
+      not_contains: ["cannot", "unable"]
+
+  - name: "Migrated Pricing Test"
+    description: "Automated version of manual pricing test"
+    prompt: "How much does shipping cost?"
+    expect:
+      contains: ["shipping", "cost", "price", "fee"]
+      not_contains: ["don't know", "cannot"]
+
+  - name: "Migrated General Help Test"
+    description: "Automated version of manual general help test"
+    prompt: "I need help with my purchase"
+    expect:
+      contains: ["help", "assist", "support", "guide"]
+      not_contains: ["sorry", "unavailable"]
+
+migration_benefits:
+  time_savings:
+    before: "4 hours per test cycle"
+    after: "15 minutes per test cycle"
+    improvement: "94% reduction"
+
+  coverage_improvement:
+    before: "20 test scenarios"
+    after: "50+ test scenarios"
+    improvement: "150% increase"
+
+  reliability_improvement:
+    before: "Human-dependent, variable results"
+    after: "Automated, consistent results"
+    improvement: "100% consistency"
+
+  scalability_improvement:
+    before: "Limited by human resources"
+    after: "Unlimited parallel execution"
+    improvement: "Infinite scalability"
+
+  cost_optimization:
+    before: "High human resource costs"
+    after: "Minimal automated costs"
+    improvement: "90% cost reduction"
+
+  quality_improvement:
+    before: "Manual error-prone testing"
+    after: "Automated error-free testing"
+    improvement: "Zero human errors"
+
+implementation_timeline:
+  week_1:
+    - "Audit existing manual tests"
+    - "Identify critical test scenarios"
+    - "Set up Glassbox AI environment"
+
+  week_2:
+    - "Convert first 10 manual tests"
+    - "Validate automated test results"
+    - "Train team on new tools"
+
+  week_3:
+    - "Convert remaining manual tests"
+    - "Implement CI/CD integration"
+    - "Set up monitoring and alerting"
+
+  week_4:
+    - "Optimize test performance"
+    - "Implement reliability features"
+    - "Document new processes"
+
+  ongoing:
+    - "Continuous test maintenance"
+    - "Performance optimization"
+    - "Feature expansion"
+
+success_metrics:
+  - "Testing time reduced by 94%"
+  - "Test coverage increased by 150%"
+  - "Bug detection improved by 40%"
+  - "Cost per test reduced by 90%"
+  - "Test consistency improved to 100%"
+  - "Scalability increased to unlimited" 

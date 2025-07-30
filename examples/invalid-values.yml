@@ -1,0 +1,51 @@
+# Invalid values example
+# This file demonstrates various value validation errors
+
+name: invalid_values_demo
+description: This file has invalid field values to test validation
+settings:
+  provider: openai
+  model: gpt-3.5-turbo
+
+tests:
+  - name: test_with_invalid_name
+    description: This test has an invalid name with special characters
+    prompt: "Write a Python function"
+    expect_contains: ["def", "return"]
+    max_tokens: 200
+    max_cost_usd: 0.005
+
+  - name: test_with_too_short_description
+    description: Too short
+    prompt: "Write a Python function"
+    expect_contains: ["def", "return"]
+    max_tokens: 200
+    max_cost_usd: 0.005
+
+  - name: test_with_invalid_max_tokens
+    description: This test has an invalid max_tokens value
+    prompt: "Write a Python function"
+    expect_contains: ["def", "return"]
+    max_tokens: 5000  # Too high
+    max_cost_usd: 0.005
+
+  - name: test_with_invalid_cost
+    description: This test has an invalid cost value
+    prompt: "Write a Python function"
+    expect_contains: ["def", "return"]
+    max_tokens: 200
+    max_cost_usd: 2.0  # Too high
+
+  - name: test_with_invalid_expect_contains
+    description: This test has an invalid expect_contains value
+    prompt: "Write a Python function"
+    expect_contains: "not an array"  # Should be array
+    max_tokens: 200
+    max_cost_usd: 0.005
+
+  - name: test_with_empty_expect_contains
+    description: This test has an empty expect_contains array
+    prompt: "Write a Python function"
+    expect_contains: []  # Empty array
+    max_tokens: 200
+    max_cost_usd: 0.005 
